@@ -1,0 +1,383 @@
+--[[
+	[ KWXHY Menu ]
+	Criado com código modular, limpo e otimizado para Roblox.
+	Atualizado: Cor Roxa | Nome alterado para KWXHY
+]]
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+-- // CONFIGURAÇÕES GLOBAIS - COR ROXA
+local CONFIG = {
+	Colors = {
+		ToggleBtn = Color3.fromRGB(138, 43, 226),   -- Roxo vibrante
+		MainBg = Color3.fromRGB(138, 43, 226),       -- Roxo vibrante
+		Stroke = Color3.fromRGB(106, 27, 154),       -- Roxo mais escuro
+		Text = Color3.fromRGB(255, 255, 255),        -- Branco para melhor legibilidade
+		Accent = Color3.fromRGB(186, 104, 200)       -- Destaque roxo claro
+	},
+	Sizes = {
+		Toggle = UDim2.new(0, 50, 0, 50),
+		MenuOpen = UDim2.new(0, 420, 0, 300),
+		MenuClosed = UDim2.new(0, 0, 0, 0)
+	},
+	Tween = {
+		Info = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	},
+	DefaultBackground = "rbxassetid://82396411906964"
+}
+-- // SISTEMA DE TEMAS
+local ThemeSystem = {
+	Current = "Default",
+	Themes = {
+		Default = {
+			BackgroundImage = CONFIG.DefaultBackground
+		},
+		Ariana = {
+			BackgroundImage = "rbxassetid://133816048165658"
+		},
+		PinkYara = {
+			BackgroundImage = "rbxassetid://130187487655695"
+		},
+		AdrianaLima = {
+			BackgroundImage = "rbxassetid://136251373820483"
+		},
+		Sabrina = {
+			BackgroundImage = "rbxassetid://105468290598013"
+		}
+	},
+	ResetCallbacks = {}
+}
+function ThemeSystem.Apply(themeName, bgImage)
+	local theme = ThemeSystem.Themes[themeName]
+	if not theme or not bgImage then return end
+	bgImage.Image = theme.BackgroundImage
+	ThemeSystem.Current = themeName
+end
+function ThemeSystem.Reset(bgImage)
+	ThemeSystem.Apply("Default", bgImage)
+	for _, callback in ipairs(ThemeSystem.ResetCallbacks) do
+		task.spawn(callback)
+	end
+end
+function ThemeSystem.RegisterResetCallback(callback)
+	if typeof(callback) == "function" then
+		table.insert(ThemeSystem.ResetCallbacks, callback)
+	end
+end
+-- // ESTADO DO MENU
+local menuState = {
+	isOpen = false,
+	isTweening = false
+}
+-- // CONSTRUTOR DA INTERFACE
+local function createGui()
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "KWXHY_MenuGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGui.Parent = playerGui
+	-- Botão Flutuante
+	local toggleButton = Instance.new("ImageButton")
+	toggleButton.Name = "ToggleMenuButton"
+	toggleButton.Size = CONFIG.Sizes.Toggle
+	toggleButton.Position = UDim2.new(0.05, 0, 0.5, -25)
+	toggleButton.BackgroundColor3 = CONFIG.Colors.ToggleBtn
+	toggleButton.AutoButtonColor = false
+	toggleButton.Parent = screenGui
+	local toggleCorner = Instance.new("UICorner")
+	toggleCorner.CornerRadius = UDim.new(1, 0)
+	toggleCorner.Parent = toggleButton
+	local toggleStroke = Instance.new("UIStroke")
+	toggleStroke.Color = CONFIG.Colors.Stroke
+	toggleStroke.Thickness = 1.5
+	toggleStroke.Transparency = 0.4
+	toggleStroke.Parent = toggleButton
+	local toggleText = Instance.new("TextLabel")
+	toggleText.Name = "ToggleText"
+	toggleText.Size = UDim2.new(1, 0, 1, 0)
+	toggleText.Position = UDim2.new(0, 0, 0, 0)
+	toggleText.BackgroundTransparency = 1
+	toggleText.Font = Enum.Font.GothamBold
+	toggleText.Text = "KW"
+	toggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleText.TextSize = 16
+	toggleText.TextXAlignment = Enum.TextXAlignment.Center
+	toggleText.TextYAlignment = Enum.TextYAlignment.Center
+	toggleText.Parent = toggleButton
+	-- Janela Principal
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainFrame"
+	mainFrame.Size = CONFIG.Sizes.MenuClosed
+	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	mainFrame.BackgroundColor3 = CONFIG.Colors.MainBg
+	mainFrame.Visible = false
+	mainFrame.ClipsDescendants = true
+	mainFrame.Parent = screenGui
+	local mainCorner = Instance.new("UICorner")
+	mainCorner.CornerRadius = UDim.new(0, 12)
+	mainCorner.Parent = mainFrame
+	local mainStroke = Instance.new("UIStroke")
+	mainStroke.Color = Color3.fromRGB(255, 255, 255)
+	mainStroke.Thickness = 1.2
+	mainStroke.Transparency = 0.35
+	mainStroke.Parent = mainFrame
+	local mainScale = Instance.new("UIScale")
+	mainScale.Scale = 0.85
+	mainScale.Parent = mainFrame
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = CONFIG.DefaultBackground
+	bgImage.ScaleType = Enum.ScaleType.Stretch
+	bgImage.ZIndex = 0
+	bgImage.Parent = mainFrame
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 12)
+	bgCorner.Parent = bgImage
+	-- Cabeçalho
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Name = "HeaderFrame"
+	headerFrame.Size = UDim2.new(1, 0, 0, 45)
+	headerFrame.BackgroundTransparency = 1
+	headerFrame.Parent = mainFrame
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
+	titleLabel.Size = UDim2.new(1, -20, 1, 0)
+	titleLabel.Position = UDim2.new(0, 15, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Text = "kwxhy"
+	titleLabel.TextColor3 = CONFIG.Colors.Text
+	titleLabel.TextSize = 18
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.Parent = headerFrame
+	-- Área de Conteúdo
+	local contentScroll = Instance.new("ScrollingFrame")
+	contentScroll.Name = "ContentScroll"
+	contentScroll.Size = UDim2.new(1, -20, 1, -75)
+	contentScroll.Position = UDim2.new(0, 10, 0, 50)
+	contentScroll.BackgroundTransparency = 1
+	contentScroll.BorderSizePixel = 0
+	contentScroll.ScrollBarThickness = 4
+	contentScroll.ScrollBarImageColor3 = CONFIG.Colors.Accent
+	contentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	contentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	contentScroll.Parent = mainFrame
+	local uiPadding = Instance.new("UIPadding")
+	uiPadding.PaddingTop = UDim.new(0, 5)
+	uiPadding.PaddingBottom = UDim.new(0, 5)
+	uiPadding.PaddingLeft = UDim.new(0, 5)
+	uiPadding.PaddingRight = UDim.new(0, 5)
+	uiPadding.Parent = contentScroll
+	local uiListLayout = Instance.new("UIListLayout")
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiListLayout.Padding = UDim.new(0, 8)
+	uiListLayout.Parent = contentScroll
+	-- Versão
+	local versionLabel = Instance.new("TextLabel")
+	versionLabel.Name = "VersionLabel"
+	versionLabel.Size = UDim2.new(0, 80, 0, 16)
+	versionLabel.Position = UDim2.new(1, -10, 1, -6)
+	versionLabel.AnchorPoint = Vector2.new(1, 1)
+	versionLabel.BackgroundTransparency = 1
+	versionLabel.Font = Enum.Font.Gotham
+	versionLabel.Text = "v2100"
+	versionLabel.TextColor3 = Color3.fromRGB(220, 180, 255)
+	versionLabel.TextSize = 12
+	versionLabel.TextXAlignment = Enum.TextXAlignment.Right
+	versionLabel.Parent = mainFrame
+	local creditLabel = Instance.new("TextLabel")
+	creditLabel.Name = "CreditLabel"
+	creditLabel.Size = UDim2.new(0, 140, 0, 16)
+	creditLabel.Position = UDim2.new(0, 10, 1, -6)
+	creditLabel.AnchorPoint = Vector2.new(0, 1)
+	creditLabel.BackgroundTransparency = 1
+	creditLabel.Font = Enum.Font.Gotham
+	creditLabel.Text = "Tur/mm2_y2k123"
+	creditLabel.TextColor3 = Color3.fromRGB(220, 180, 255)
+	creditLabel.TextSize = 11
+	creditLabel.TextXAlignment = Enum.TextXAlignment.Left
+	creditLabel.Parent = mainFrame
+	return screenGui, toggleButton, mainFrame, mainScale, contentScroll, bgImage
+end
+-- // SISTEMA DE DRAG
+local function makeDraggable(guiObject)
+	local dragging = false
+	local dragInput, mousePos, framePos
+	guiObject.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			mousePos = input.Position
+			framePos = guiObject.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+	guiObject.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - mousePos
+			guiObject.Position = UDim2.new(
+				framePos.X.Scale,
+				framePos.X.Offset + delta.X,
+				framePos.Y.Scale,
+				framePos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+-- // ANIMAÇÃO DE ABRIR/FECHAR
+local function toggleMenu(mainFrame, mainScale)
+	if menuState.isTweening then return end
+	menuState.isTweening = true
+	if not menuState.isOpen then
+		mainFrame.Visible = true
+		menuState.isOpen = true
+		local sizeTween = TweenService:Create(mainFrame, CONFIG.Tween.Info, {Size = CONFIG.Sizes.MenuOpen})
+		local scaleTween = TweenService:Create(mainScale, CONFIG.Tween.Info, {Scale = 1})
+		sizeTween:Play()
+		scaleTween:Play()
+		sizeTween.Completed:Wait()
+	else
+		menuState.isOpen = false
+		local sizeTween = TweenService:Create(mainFrame, CONFIG.Tween.Info, {Size = CONFIG.Sizes.MenuClosed})
+		local scaleTween = TweenService:Create(mainScale, CONFIG.Tween.Info, {Scale = 0.85})
+		sizeTween:Play()
+		scaleTween:Play()
+		sizeTween.Completed:Wait()
+		mainFrame.Visible = false
+	end
+	menuState.isTweening = false
+end
+-- // ADICIONAR BOTÕES
+local function addMenuButton(parentScrollingFrame, buttonText, callback)
+	local button = Instance.new("TextButton")
+	button.Name = "ScriptButton_" .. buttonText
+	button.Size = UDim2.new(1, 0, 0, 38)
+	button.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+	button.AutoButtonColor = false
+	button.Font = Enum.Font.GothamSemibold
+	button.Text = "  " .. buttonText
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.TextSize = 14
+	button.TextXAlignment = Enum.TextXAlignment.Left
+	button.Parent = parentScrollingFrame
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = CONFIG.Colors.Stroke
+	stroke.Transparency = 0.4
+	stroke.Parent = button
+	local buttonScale = Instance.new("UIScale")
+	buttonScale.Scale = 1
+	buttonScale.Parent = button
+	-- Hover
+	button.MouseEnter:Connect(function()
+		TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(165, 75, 245)}):Play()
+	end)
+	button.MouseLeave:Connect(function()
+		TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play()
+	end)
+	-- Clique
+	button.MouseButton1Down:Connect(function()
+		TweenService:Create(buttonScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = 0.96}):Play()
+	end)
+	button.MouseButton1Up:Connect(function()
+		TweenService:Create(buttonScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = 1}):Play()
+	end)
+	if callback then
+		button.MouseButton1Click:Connect(callback)
+	end
+	return button
+end
+-- // INICIALIZAÇÃO
+local function init()
+	local screenGui, toggleButton, mainFrame, mainScale, contentScroll, bgImage = createGui()
+	makeDraggable(toggleButton)
+	toggleButton.MouseButton1Click:Connect(function()
+		toggleMenu(mainFrame, mainScale)
+	end)
+	-- BOTÕES
+	addMenuButton(contentScroll, "Redefinir", function()
+		ThemeSystem.Reset(bgImage)
+	end)
+	addMenuButton(contentScroll, "Ariana Theme", function()
+		ThemeSystem.Apply("Ariana", bgImage)
+	end)
+	addMenuButton(contentScroll, "Pink Yara", function()
+		ThemeSystem.Apply("PinkYara", bgImage)
+	end)
+	addMenuButton(contentScroll, "Adriana Lima Theme", function()
+		ThemeSystem.Apply("AdrianaLima", bgImage)
+	end)
+	addMenuButton(contentScroll, "Sabrina Theme", function()
+		ThemeSystem.Apply("Sabrina", bgImage)
+	end)
+	addMenuButton(contentScroll, "Shift 2023", function()
+		loadstring(game:HttpGet("https://pastefy.app/iyd3boez/raw"))()
+	end)
+	addMenuButton(contentScroll, "SG Nick Escada", function()
+		loadstring(game:HttpGet("https://pastefy.app/PC1fXUB9/raw"))()
+	end)
+	addMenuButton(contentScroll, "SG Natan", function()
+		loadstring(game:HttpGet("https://pastefy.app/AGEUcVNO/raw"))()
+	end)
+	addMenuButton(contentScroll, "SG Nick Emotes", function()
+		loadstring(game:HttpGet("https://pastefy.app/aGPsgtpc/raw"))()
+	end)
+	addMenuButton(contentScroll, "Confete", function()
+		loadstring(game:HttpGet("https://pastefy.app/lTL9XW4l/raw"))()
+	end)
+	addMenuButton(contentScroll, "Sound Abafado", function()
+		loadstring(game:HttpGet("https://pastefy.app/RVW7TOPW/raw"))()
+	end)
+	addMenuButton(contentScroll, "Anti Click", function()
+		loadstring(game:HttpGet("https://pastefy.app/XZiSqCNV/raw"))()
+	end)
+	addMenuButton(contentScroll, "Edit Gun", function()
+		loadstring(game:HttpGet("https://pastefy.app/PTLmM3jD/raw"))()
+	end)
+	addMenuButton(contentScroll, "Quality Fosca", function()
+		loadstring(game:HttpGet("https://pastefy.app/kS2oIOgX/raw"))()
+	end)
+	addMenuButton(contentScroll, "Emotes", function()
+		loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Fe-emotes-136121"))()
+	end)
+	addMenuButton(contentScroll, "Anim", function()
+		loadstring(game:HttpGet("https://api.rubis.app/v2/scrap/PwFrcMysMOIJuWAQ/raw"))()
+	end)
+	addMenuButton(contentScroll, "Anim Old", function()
+		game.Workspace.Retargeting = Enum.AnimatorRetargetingMode.Disabled
+	end)
+	addMenuButton(contentScroll, "C4 Tawa", function()
+		loadstring(game:HttpGet("https://pastefy.app/5rqOKgES/raw"))()
+	end)
+	addMenuButton(contentScroll, "Sound Gun", function()
+		loadstring(game:HttpGet("https://pastefy.app/DmiGQ5MU/raw"))()
+	end)
+	addMenuButton(contentScroll, "Anti Fling", function() end)
+	addMenuButton(contentScroll, "Mira Mobilador", function()
+		loadstring(game:HttpGet("https://pastefy.app/pkV4KNyv/raw"))()
+	end)
+	addMenuButton(contentScroll, "Trow old", function()
+		loadstring(game:HttpGet("https://pastefy.app/GyghlYOG/raw"))()
+	end)
+	addMenuButton(contentScroll, "Slot 2 emote", function()
+		loadstring(game:HttpGet("https://pastefy.app/daAKZfHG/raw"))()
+	end)
+end
+init()
